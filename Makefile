@@ -40,7 +40,11 @@ clean:
 	@echo "Cleaning files..."
 	rm -rf $(LEXER_OUT) src/$(PARSER).cc include/$(PARSER).hh obj bin
 
-program: $(BIN) $(BEBIN)
+program: $(CLEAN) $(BIN) $(BEBIN)
+
+$(CLEAN):
+	@echo "Cleaning files..."
+	rm -rf $(LEXER_OUT) src/$(PARSER).cc include/$(PARSER).hh obj bin
 
 $(BEBIN): obj/test.o obj/runtime_lib.o
 	@echo "Building executable..."
