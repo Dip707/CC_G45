@@ -1,16 +1,11 @@
-#def x 123
-let abc = x * 20 + 20 + (22 / 2) - 3;
-dbg abc + abc;
 
-#ifdef y
-dbg 2001;
-#elif y
-dbg 508;
-#elif z
-dbg 100;
-#else
-dbg 20;
-#endif
+let abc = 123 * 20 + 20 + (22 / 2) - 3;
+dbg abc + abc;
+let x = 20;
+let y = 11;
+dbg x + y;
+abc = x + y;
+dbg abc;
+abc = x+y?x:y;
 
 // hello
-

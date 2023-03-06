@@ -17,7 +17,6 @@ string getvalue(string m_key) {
             yyerror("Define marco again : Circular dependancy detected");
             return 0;
         }
-        
         vis_mac.insert(m_key);
     }
     
@@ -93,12 +92,10 @@ string getvalue(string m_key) {
     int pos_endif = str.find(endif_var);
     
     while(true){
-        // printf("here I am stuck100\n");
         str += yyinput();
         string temp = "";
         for(int i = 0; i < 6; i++)temp += str[str.size() - 1 - i];
         reverse(temp.begin(), temp.end());
-        // cout<<str<<"\n";
         if(temp == endif_var)break;
     }
 
@@ -186,6 +183,8 @@ string getvalue(string m_key) {
 "("       { return TLPAREN; }
 ")"       { return TRPAREN; }
 "="       { return TEQUAL; }
+"?"       {return TQUES;}
+":"       {return TCOLON;}
 "dbg"     { return TDBG; }
 "let"     { return TLET; }
 [0-9]+    { yylval.lexeme = string(yytext); return TINT_LIT; }
@@ -238,6 +237,8 @@ std::string token_to_string(int token, const char *lexeme) {
         
         case TINT_LIT: s = "TINT_LIT"; s.append("  ").append(lexeme); break;
         case TIDENT: s = "TIDENT"; s.append("  ").append(lexeme); break;
+        case TQUES: s = "TQUES"; break;
+        case TCOLON: s = "TCOLON"; break;
     }
     
     

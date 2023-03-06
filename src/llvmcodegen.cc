@@ -80,7 +80,7 @@ void LLVMCompiler::write(std::string file_name) {
 
 //  ┌―――――――――――――――――――――┐  //
 //  │ AST -> LLVM Codegen │  //
-// └―――――――――――――――――――――┘   //
+//  └―――――――――――――――――――――┘  //
 
 // codegen for statements
 Value *NodeStmts::llvm_codegen(LLVMCompiler *compiler) {
@@ -144,4 +144,23 @@ Value *NodeIdent::llvm_codegen(LLVMCompiler *compiler) {
     return compiler->builder.CreateLoad(compiler->builder.getInt32Ty(), alloc, identifier);
 }
 
+Value *NodeAssign::llvm_codegen(LLVMCompiler *compiler) {
+    // Value *expr = expression->llvm_codegen(compiler);
+
+    // IRBuilder<> temp_builder(
+    //     &MAIN_FUNC->getEntryBlock(),
+    //     MAIN_FUNC->getEntryBlock().begin()
+    // );
+
+    // AllocaInst *alloc = temp_builder.CreateAlloca(compiler->builder.getInt32Ty(), 0, identifier);
+
+    // compiler->locals[identifier] = alloc;
+
+    // return compiler->builder.CreateStore(expr, alloc);
+    return nullptr;
+}
+
+Value *NodeTernary::llvm_codegen(LLVMCompiler *compiler) {
+    return nullptr;
+}
 #undef MAIN_FUNC
