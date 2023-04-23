@@ -61,12 +61,6 @@ StmtList :
 
 Stmt : TLET TIDENT TCOLON TTYPE TEQUAL Expr TSCOL
      {  
-        for(auto x : symbol_table->table){
-            for(auto y : x){
-                cout<<y<<' ';
-            }
-            cout<<'\n';
-        }
         if(symbol_table->scope_contains($2)) {
             // tried to redeclare variable, so error
             yyerror("tried to redeclare variable.\n");

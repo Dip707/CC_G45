@@ -49,64 +49,6 @@ int parse_arguments(int argc, char *argv[]) {
 	return ARG_FAIL;
 }
 
-// Node *fold_constants(Node *node) {
-//     if (node == nullptr) {
-//         return nullptr;
-//     }
-
-//     // Recursively fold constants in the children of the current node
-//     if (NodeStmts *stmts = dynamic_cast<NodeStmts *>(node)) {
-//         for (size_t i = 0; i < stmts->list.size(); ++i) {
-//             stmts->list[i] = fold_constants(stmts->list[i]);
-//         }
-//     } else if (NodeBinOp *bin_op = dynamic_cast<NodeBinOp *>(node)) {
-//         bin_op->left = fold_constants(bin_op->left);
-//         bin_op->right = fold_constants(bin_op->right);
-
-//         NodeLIT *left = dynamic_cast<NodeLIT *>(bin_op->left);
-//         NodeLIT *right = dynamic_cast<NodeLIT *>(bin_op->right);
-
-//         if (left && right && left->lit_type == right->lit_type) {
-//             long result = 0;
-//             switch (bin_op->op) {
-//                 case NodeBinOp::Op::PLUS:
-//                     result = left->value.value_int + right->value.value_int;
-//                     break;
-//                 case NodeBinOp::Op::MINUS:
-//                     result = left->value.value_int - right->value.value_int;
-//                     break;
-//                 case NodeBinOp::Op::MULT:
-//                     result = left->value.value_int * right->value.value_int;
-//                     break;
-//                 case NodeBinOp::Op::DIV:
-//                     if (right->value.value_int == 0) {
-//                         std::cout << "Error: Division by zero" << std::endl;
-//                         return nullptr;
-//                     }
-//                     result = left->value.value_int / right->value.value_int;
-//                     break;
-//             }
-//             return new NodeLIT(left->lit_type, result);
-//         }
-//     } else if (NodeTernary *ternary = dynamic_cast<NodeTernary *>(node)) {
-//         ternary->expression1 = fold_constants(ternary->expression1);
-//         ternary->expression2 = fold_constants(ternary->expression2);
-//         ternary->expression3 = fold_constants(ternary->expression3);
-
-//         NodeLIT *cond = dynamic_cast<NodeLIT *>(ternary->expression1);
-//         if (cond) {
-//             if(cond->value.value_int){
-//                 return ternary->expression2;
-//             } else {
-//                 return ternary->expression3;
-//             }
-//         }
-//     }
-
-//     return node;
-// }
-
-
 
 int main(int argc, char *argv[]) {
 	int arg_option = parse_arguments(argc, argv);

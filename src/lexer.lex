@@ -101,16 +101,12 @@ string getvalue(string m_key) {
     reverse(str.begin(), str.end());
     int n = str.size();
 
-    //"#elif DEBUG \n dkfhdslnkfhsdlksdfjsdfldf #elif DEBUG2 ndsjfsdbfksdjbf \n #else \n diahdjlfjd #endif"
-        bool elif_flag = false;
+    bool elif_flag = false;
     int pos = -1;
     string ans = "";
     while(true){
-        // printf("here I am stuck\n");
         pos = str.find(elif_var, pos + 1);
-        // cout<<pos<<"\n";
         if(pos != -1){
-            //condition check
             string check = "";
             int end_check = pos;
             for(int i = pos + 6; i < n; i++){
