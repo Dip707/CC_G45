@@ -22,7 +22,6 @@ std::string NodeBinOp::to_string() {
         case MULT: out += '*'; break;
         case DIV: out += '/'; break;
     }
-
     out += ' ' + left->to_string() + ' ' + right->to_string() + ')';
 
     return out;
@@ -69,7 +68,6 @@ std::string NodeStmts::to_string() {
     for(auto i : list) {
         out += " " + i->to_string();
     }
-
     out += ')';
 
     return out;
@@ -95,8 +93,9 @@ std::string NodeDebug::to_string() {
     return "(dbg " + expression->to_string() + ")";
 }
 
-NodeIdent::NodeIdent(std::string ident) {
+NodeIdent::NodeIdent(std::string ident, std::string dt) {
     identifier = ident;
+    datatype = dt;
 }
 std::string NodeIdent::to_string() {
     return identifier;
@@ -132,4 +131,85 @@ NodeIfElse::NodeIfElse(Node *expr1, Node *stmt1, Node *stmt2){
 
 std::string NodeIfElse::to_string(){
     return "( if-else " + expression->to_string() + "\n" + if_block->to_string() + "\n" + else_block->to_string() + "\n)";
+}
+
+NodeArg::NodeArg(std::string id, std::string dt){
+    type = ARG;
+    identifier = id;
+    datatype = dt;
+}
+
+std::string NodeArg::to_string(){
+    return "(arg " + identifier + " " + datatype + ")";
+}
+
+NodeArgList::NodeArgList(){
+    type = ARGLIST;
+    arg_list = std::vector<Node*>();
+}
+
+void NodeArgList::push_back(Node *node) {
+    arg_list.push_back(node);
+}
+
+std::string NodeArgList::to_string(){
+    std::string out = "(Args";
+    for(auto i : arg_list) {
+        out += " " + i->to_string();
+    }
+    out += ')';
+
+    return out;
+}
+
+NodeFunctionCall::NodeFunctionCall(std::string id, Node *args){
+    type = FUNC_CALL;
+    identifier = id;
+    arg_list = args;
+}
+
+std::string NodeFunctionCall::to_string(){
+    return "(call " + identifier + " " + arg_list->to_string() + ")";
+}
+
+
+NodeParameter::NodeParameter(std::string id, std::string dt){
+    type = PARAM;
+    identifier = id;
+    datatype = dt;
+}
+
+std::string NodeParameter::to_string(){
+    return "(param " + identifier + " " + datatype + ")";
+}
+
+NodeParameterList::NodeParameterList(){
+    type = PARAMLIST;
+    param_list = std::vector<Node*>();
+}
+
+void NodeParameterList::push_back(Node *node) {
+    param_list.push_back(node);
+}
+
+std::string NodeParameterList::to_string(){
+    std::string out = "(Params";
+    for(auto i : param_list) {
+        out += " " + i->to_string();
+    }
+    out += ')';
+
+    return out;
+}
+
+NodeFunctionDecl::NodeFunctionDecl(std::string id, std::string dt, Node* params, Node *stmt){
+    type = FUNC_DECL;
+    identifier = id;
+    datatype = dt;
+    param_list = params;
+    block = stmt;
+}
+
+std::string NodeFunctionDecl::to_string(){
+    return "(func " + identifier + " " + datatype + " " + param_list->to_string() + " " + block->to_string() + ")";
 }

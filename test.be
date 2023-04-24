@@ -1,8 +1,3 @@
-let a : int = 3;
-if 1 {
-    let b : int = 4;
-} else {
-    let c : int = 5;
-}
+let a: long = 8 + 5433243343434343;
+
 dbg a;
-//dbg c;

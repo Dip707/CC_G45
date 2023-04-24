@@ -26,7 +26,7 @@ void LLVMCompiler::compile(Node *root) {
     // void printi();
     FunctionType *printi_func_type = FunctionType::get(
         builder.getVoidTy(),
-        {builder.getInt32Ty()},
+        {builder.getInt64Ty()},
         false
     );
     Function::Create(
@@ -94,12 +94,26 @@ Value *NodeStmts::llvm_codegen(LLVMCompiler *compiler) {
 
 Value *NodeDebug::llvm_codegen(LLVMCompiler *compiler) {
     Value *expr = expression->llvm_codegen(compiler);
-
+    Type *expr_type = expr->getType();
+    
     Function *printi_func = compiler->module.getFunction("printi");
-    compiler->builder.CreateCall(printi_func, {expr});
+
+    if (expr_type->isIntegerTy(16)) {
+        expr = compiler->builder.CreateSExt(expr, compiler->builder.getInt64Ty(), "short_to_long");
+    } else if (expr_type->isIntegerTy(32)) {
+        expr = compiler->builder.CreateSExt(expr, compiler->builder.getInt64Ty(), "int_to_long");
+    }
+
+    if (expr_type->isIntegerTy(16) || expr_type->isIntegerTy(32) || expr_type->isIntegerTy(64)) {
+        compiler->builder.CreateCall(printi_func, {expr});
+    } else {
+        std::cerr << "NodeDebug does not support the given data type.\n";
+        exit(EXIT_FAILURE);
+    }
 
     return expr;
 }
+
 
 Value *NodeLIT::llvm_codegen(LLVMCompiler *compiler) {
     if(lit_type == INT){
@@ -225,6 +239,32 @@ Value *NodeDecl::llvm_codegen(LLVMCompiler *compiler) {
                 std::cerr << "Type mismatch: cannot assign a value of type int to a variable of type short without explicit cast" << std::endl;
                 exit(1);
             }
+        } else if (expr_type->isIntegerTy(64) && target_type->isIntegerTy(32)) {
+            if (ConstantInt *CI = dyn_cast<ConstantInt>(expr)) {
+                int32_t val = CI->getSExtValue();
+                if (val >= INT32_MIN && val <= INT32_MAX) {
+                    expr = compiler->builder.CreateTrunc(expr, compiler->builder.getInt32Ty(), "LONG_to_INT");
+                } else {
+                    std::cerr << "Type mismatch: the int value " << val << " is out of range for a short variable" << std::endl;
+                    exit(1);
+                }
+            } else {
+                std::cerr << "Type mismatch: cannot assign a value of type int to a variable of type short without explicit cast" << std::endl;
+                exit(1);
+            }
+        } else if (expr_type->isIntegerTy(64) && target_type->isIntegerTy(16)) {
+            if (ConstantInt *CI = dyn_cast<ConstantInt>(expr)) {
+                int32_t val = CI->getSExtValue();
+                if (val >= INT16_MIN && val <= INT16_MAX) {
+                    expr = compiler->builder.CreateTrunc(expr, compiler->builder.getInt16Ty(), "long_to_short");
+                } else {
+                    std::cerr << "Type mismatch: the int value " << val << " is out of range for a short variable" << std::endl;
+                    exit(1);
+                }
+            } else {
+                std::cerr << "Type mismatch: cannot assign a value of type int to a variable of type short without explicit cast" << std::endl;
+                exit(1);
+            }
         } else {
             std::cerr << "Type mismatch: cannot assign a value of type " << datatype << " to a variable of type " << expr_type->getTypeID() << std::endl;
             exit(1);
@@ -239,9 +279,13 @@ Value *NodeDecl::llvm_codegen(LLVMCompiler *compiler) {
 
 Value *NodeIdent::llvm_codegen(LLVMCompiler *compiler) {
     AllocaInst *alloc = compiler->locals[identifier];
-
-    // if your LLVM_MAJOR_VERSION >= 14
-    return compiler->builder.CreateLoad(compiler->builder.getInt32Ty(), alloc, identifier);
+    if(datatype == "short") {
+        return compiler->builder.CreateLoad(compiler->builder.getInt16Ty(), alloc, identifier);
+    } else if (datatype == "int") {
+        return compiler->builder.CreateLoad(compiler->builder.getInt32Ty(), alloc, identifier);
+    } else {
+        return compiler->builder.CreateLoad(compiler->builder.getInt64Ty(), alloc, identifier);
+    }
 }
 
 Value *NodeAssign::llvm_codegen(LLVMCompiler *compiler) {
@@ -330,6 +374,49 @@ Value *NodeIfElse::llvm_codegen(LLVMCompiler *compiler) {
 
     return nullptr;
 }
+
+Value *NodeArg::llvm_codegen(LLVMCompiler *compiler) {
+    return nullptr;
+}
+
+Value *NodeArgList::llvm_codegen(LLVMCompiler *compiler) {
+    return nullptr;
+}
+
+Value *NodeParameter::llvm_codegen(LLVMCompiler *compiler) {
+    return nullptr;
+}
+
+Value *NodeParameterList::llvm_codegen(LLVMCompiler *compiler) {
+    return nullptr;
+}
+
+Value *NodeFunctionDecl::llvm_codegen(LLVMCompiler *compiler) {
+    return nullptr;
+}
+
+Value *NodeFunctionCall::llvm_codegen(LLVMCompiler *compiler) {
+    // Function *func = compiler->module->getFunction(identifier);
+    // if (!func) {
+    //     std::cerr << "Unknown function referenced: " << identifier << std::endl;
+    //     exit(1);
+    // }
+
+    // if (func->arg_size() != arguments.size()) {
+    //     std::cerr << "Incorrect number of arguments passed to function: " << identifier << std::endl;
+    //     exit(1);
+    // }
+
+    // std::vector<Value *> args;
+    // for (auto &arg : arguments) {
+    //     args.push_back(arg->llvm_codegen(compiler));
+    // }
+
+    // return compiler->builder.CreateCall(func, args, "calltmp");
+    return nullptr;
+}
+
+
 
 
 

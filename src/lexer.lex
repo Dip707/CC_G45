@@ -20,8 +20,13 @@ string getvalue(string m_key) {
     }
     return m_key;
 }
+
 %}
+
+%x MULTILINE_COMMENT
+
 %%
+
  
 "#def "     {
     int ch;
@@ -177,16 +182,15 @@ string getvalue(string m_key) {
 ":"       { return TCOLON;}
 "dbg"     { return TDBG; }
 "let"     { return TLET; }
-"int" { yylval.lexeme = string(yytext); return TTYPE; }
-"short" { yylval.lexeme = string(yytext); return TTYPE; }
-"long" { yylval.lexeme = string(yytext); return TTYPE; }
+"int"     { yylval.lexeme = string(yytext); return TTYPE; }
+"short"   { yylval.lexeme = string(yytext); return TTYPE; }
+"long"    { yylval.lexeme = string(yytext); return TTYPE; }
 
-"if" { return TIF; }
-"else" { return TELSE; }
+"if"      { return TIF; }
+"else"    { return TELSE; }
 
-
-"{" { return TBOPEN; }
-"}" { return TBCLOSE; }
+"{"       { return TBOPEN; }
+"}"       { return TBCLOSE; }
 
 [0-9]+    { yylval.lexeme = string(yytext); return TINT_LIT; }
 [a-zA-Z]+ {
@@ -216,9 +220,19 @@ string getvalue(string m_key) {
 }
 [ \t\n]   { /* skip */ }
 "//".*      { /*skip*/ }
-"/*"[a-zA-Z0-9 \n]*"*/" {/* skip */}
+
+"/*"  {BEGIN(MULTILINE_COMMENT);}
+
+<MULTILINE_COMMENT>[^*\n]*        /* eat anything that's not a '*' */
+<MULTILINE_COMMENT>"*"+[^*/\n]*   /* eat up '*'s not followed by '/'s */
+<MULTILINE_COMMENT>\n             { /* eat up newlines */}
+<MULTILINE_COMMENT>"*"+"/"        BEGIN(INITIAL);
+
+"fun"    { return TFUN; }
+"ret"    { return TRETURN; }
+","      { return TCOMMA; }
+
 .         { yyerror("unknown char"); }
- 
 %%
  
 std::string token_to_string(int token, const char *lexeme) {
@@ -250,6 +264,9 @@ std::string token_to_string(int token, const char *lexeme) {
         case TBOPEN: s = "TBOPEN"; break;
         case TBCLOSE: s = "TBCLOSE"; break;
 
+        case TFUN: s = "TFUN"; break;
+        case TRETURN: s = "TRETURN"; break;
+        case TCOMMA: s = "TCOMMA"; break;
     }
     
     
