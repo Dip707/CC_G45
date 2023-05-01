@@ -37,7 +37,7 @@ int yyerror(std::string msg);
 %token TIF TELSE TBOPEN TBCLOSE
 %token TFUN TRETURN TCOMMA
 
-%type <node> Expr Stmt IfElseStmt ScopeOpen ScopeClose FunctionDecl FunctionCall Arg Parameter 
+%type <node> Expr Stmt IfElseStmt ScopeOpen ScopeClose FunctionDecl FunctionCall Parameter 
 %type <stmts> Program StmtList
 %type <parameter_list> ParameterList
 %type <arg_list> ArgList
@@ -56,7 +56,7 @@ Program :
 	    ;
 
 StmtList : 
-         { $$ = nullptr; }
+         { $$ = new NodeStmts(); }
          | Stmt
          { $$ = new NodeStmts(); $$->push_back($1); }
 	     | StmtList Stmt
@@ -88,34 +88,50 @@ Stmt : TLET TIDENT TCOLON TTYPE TEQUAL Expr TSCOL
      | IfElseStmt
      { $$ = $1;}
      | FunctionDecl
-        { $$ = $1;}
+     { $$ = $1;}
+     | TRETURN Expr TSCOL
+     { $$ = new NodeReturn($2); }
      ;
 
 Parameter: TIDENT TCOLON TTYPE
-    { $$ = new NodeParameter($1, $3);}
+    { 
+        if(symbol_table->scope_contains($1)) {
+            // tried to redeclare variable, so error
+            yyerror("tried to redeclare parameter variable with same variable name.\n");
+        }else{
+            symbol_table->insert($1,$3);
+            $$ = new NodeParameter($1, $3);
+        }
+    }
     ;
 
 ParameterList: 
-        { $$ = nullptr; }
+        { $$ = new NodeParameterList(); }
         | Parameter
         { $$ = new NodeParameterList();$$->push_back($1); }
         | ParameterList TCOMMA Parameter
         { $$->push_back($3); }
         ;
 
-FunctionDecl : TFUN TIDENT TLPAREN ParameterList TRPAREN TCOLON TTYPE ScopeOpen StmtList ScopeClose {
-    if(symbol_table->get_scope() > 1){
-        // tried to declare function in function, so error
-        yyerror("Function can only be decalared in global scope.\n");
-    }
-    if(symbol_table->scope_contains($2)){
-        // tried to redeclare variable, so error
-        yyerror("tried to redeclare function with same variable or function name.\n");
-    }else{
-        symbol_table->insert($2,$7);
-        $$ = new NodeFunctionDecl($2, $7, $4, $9);
-    }
-}
+FunctionDecl : TFUN TIDENT {
+        if(symbol_table->get_scope() > 1){
+            // tried to declare function in function, so error
+            yyerror("Function can only be decalared in global scope.\n");
+        }
+        if(symbol_table->scope_contains($2)){
+            // tried to redeclare variable, so error
+            yyerror("tried to redeclare function with same variable or function name.\n");
+        }else{
+            symbol_table->push();
+            symbol_table->insert($2,"function");
+        }
+    } TLPAREN ParameterList TRPAREN TCOLON TTYPE {
+        symbol_table->insert($2,$8);
+    } TBOPEN StmtList TBCLOSE {
+        // $11->push_back(new NodeReturn(new NodeLIT(NodeLIT::INT,0)));
+        $$ = new NodeFunctionDecl($2, $8, $5, $11);
+        symbol_table->pop();
+    };
 
 ScopeOpen: TBOPEN
     {
@@ -188,15 +204,11 @@ Expr : TINT_LIT
      { $$ = $1; }
      ;
 
-Arg: TIDENT TCOLON TTYPE
-    { $$ = new NodeArg($1,$3); }
-    ;
-
 ArgList: 
-        { $$ = nullptr; }
-        | Arg
+        { $$ = new NodeArgList(); }
+        | Expr
         { $$ = new NodeArgList(); $$->push_back($1); }
-        | ArgList TCOMMA Arg
+        | ArgList TCOMMA Expr
         { $$->push_back($3); }
         ;
 

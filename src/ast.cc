@@ -133,16 +133,6 @@ std::string NodeIfElse::to_string(){
     return "( if-else " + expression->to_string() + "\n" + if_block->to_string() + "\n" + else_block->to_string() + "\n)";
 }
 
-NodeArg::NodeArg(std::string id, std::string dt){
-    type = ARG;
-    identifier = id;
-    datatype = dt;
-}
-
-std::string NodeArg::to_string(){
-    return "(arg " + identifier + " " + datatype + ")";
-}
-
 NodeArgList::NodeArgList(){
     type = ARGLIST;
     arg_list = std::vector<Node*>();
@@ -165,13 +155,21 @@ std::string NodeArgList::to_string(){
 NodeFunctionCall::NodeFunctionCall(std::string id, Node *args){
     type = FUNC_CALL;
     identifier = id;
-    arg_list = args;
+    arg_node = args;
 }
 
 std::string NodeFunctionCall::to_string(){
-    return "(call " + identifier + " " + arg_list->to_string() + ")";
+    return "(call " + identifier + " " + arg_node->to_string() + ")";
 }
 
+NodeReturn::NodeReturn(Node *expr){
+    type = RETURN;
+    expression = expr;
+}
+
+std::string NodeReturn::to_string(){
+    return "(return " + expression->to_string() + ")";
+}
 
 NodeParameter::NodeParameter(std::string id, std::string dt){
     type = PARAM;
@@ -206,10 +204,10 @@ NodeFunctionDecl::NodeFunctionDecl(std::string id, std::string dt, Node* params,
     type = FUNC_DECL;
     identifier = id;
     datatype = dt;
-    param_list = params;
+    param_node = params;
     block = stmt;
 }
 
 std::string NodeFunctionDecl::to_string(){
-    return "(func " + identifier + " " + datatype + " " + param_list->to_string() + " " + block->to_string() + ")";
+    return "(func " + identifier + " " + datatype + " " + param_node->to_string() + " " + block->to_string() + ")";
 }

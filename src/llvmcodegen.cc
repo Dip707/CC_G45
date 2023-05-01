@@ -41,27 +41,59 @@ void LLVMCompiler::compile(Node *root) {
 
     /* Main Function */
     // int main();
-    FunctionType *main_func_type = FunctionType::get(
-        builder.getInt32Ty(), {}, false /* is vararg */
+    // FunctionType *main_func_type = FunctionType::get(
+    //     builder.getInt32Ty(), {}, false /* is vararg */
+    // );
+    // Function *main_func = Function::Create(
+    //     main_func_type,
+    //     GlobalValue::ExternalLinkage,
+    //     "main",
+    //     &module
+    // );
+
+    // // create main function block
+    // BasicBlock *main_func_entry_bb = BasicBlock::Create(
+    //     *context,
+    //     "entry",
+    //     main_func
+    // );
+
+    // move the builder to the start of the main function block
+    // builder.SetInsertPoint(main_func_entry_bb);
+
+    root->llvm_codegen(this);
+
+    Function *main_func = module.getFunction("main");
+    if(!main_func) {
+        std::cerr << "Function main not found in module.\n";
+        exit(EXIT_FAILURE);
+    }
+
+    // Create the start function
+    FunctionType *start_func_type = FunctionType::get(
+        builder.getInt32Ty(),
+        {},
+        false /* is vararg */
     );
-    Function *main_func = Function::Create(
-        main_func_type,
+    Function *start_func = Function::Create(
+        start_func_type,
         GlobalValue::ExternalLinkage,
-        "main",
+        "start",
         &module
     );
 
-    // create main function block
-    BasicBlock *main_func_entry_bb = BasicBlock::Create(
+    // Create a basic block for the start function
+    BasicBlock *start_func_entry_bb = BasicBlock::Create(
         *context,
         "entry",
-        main_func
+        start_func
     );
 
-    // move the builder to the start of the main function block
-    builder.SetInsertPoint(main_func_entry_bb);
+    // Set the builder to the start of the start function block
+    builder.SetInsertPoint(start_func_entry_bb);
 
-    root->llvm_codegen(this);
+    // Call the main function
+    builder.CreateCall(main_func, {});
 
     // return 0;
     builder.CreateRet(builder.getInt32(0));
@@ -375,49 +407,130 @@ Value *NodeIfElse::llvm_codegen(LLVMCompiler *compiler) {
     return nullptr;
 }
 
-Value *NodeArg::llvm_codegen(LLVMCompiler *compiler) {
+Value *NodeArgList::llvm_codegen(LLVMCompiler *compiler){
     return nullptr;
 }
 
-Value *NodeArgList::llvm_codegen(LLVMCompiler *compiler) {
+Value *NodeParameter::llvm_codegen(LLVMCompiler *compiler){
     return nullptr;
 }
 
-Value *NodeParameter::llvm_codegen(LLVMCompiler *compiler) {
-    return nullptr;
-}
-
-Value *NodeParameterList::llvm_codegen(LLVMCompiler *compiler) {
+Value *NodeParameterList::llvm_codegen(LLVMCompiler *compiler){
     return nullptr;
 }
 
 Value *NodeFunctionDecl::llvm_codegen(LLVMCompiler *compiler) {
+    std::vector<Type *> param_types;
+
+    std::vector<Node *> param_list = ((NodeParameterList *)param_node)->param_list;
+
+    for (auto &par : param_list) {
+        NodeParameter *params = (NodeParameter *) par;
+        if (params->datatype == "short") {
+            param_types.push_back(compiler->builder.getInt16Ty());
+        } else if (params->datatype == "int") {
+            param_types.push_back(compiler->builder.getInt32Ty());
+        } else {
+            param_types.push_back(compiler->builder.getInt64Ty());
+        }
+    }
+
+    Type *return_type;
+    if (datatype == "short") {
+        return_type = compiler->builder.getInt16Ty();
+    } else if (datatype == "int") {
+        return_type = compiler->builder.getInt32Ty();
+    } else {
+        return_type = compiler->builder.getInt64Ty();
+    }
+
+    FunctionType *func_type = FunctionType::get(
+        return_type,
+        param_types,
+        false
+    );
+    Function *func = Function::Create(
+        func_type,
+        Function::ExternalLinkage,
+        identifier,
+        compiler->module
+    );
+
+    std::cerr<<"here1"<<std::endl;
+    BasicBlock *entry = BasicBlock::Create(*compiler->context, "entry", func);
+    compiler->builder.SetInsertPoint(entry);
+    std::cerr<<"here2"<<std::endl;
+
+    // Set up function arguments in the symbol table
+    unsigned idx = 0;
+    for (auto &arg : func->args()) {
+        arg.setName(((NodeParameter*)param_list[idx])->identifier);
+        AllocaInst *alloca = compiler->builder.CreateAlloca(arg.getType(), nullptr, arg.getName());
+        compiler->builder.CreateStore(&arg, alloca);
+        compiler->locals[arg.getName().str()] = alloca;
+        idx++;
+    }
+
+    // if (Value *retval = block->llvm_codegen(compiler)) {
+    //     // Instead of directly creating the return instruction, branch to the return block
+    //     compiler->builder.CreateBr(returnBlock);
+
+    //     // Set the insert point to the return block and create the return instruction with the return value
+    //     compiler->builder.SetInsertPoint(returnBlock);
+    //     compiler->builder.CreateRet(retval);
+    //     verifyFunction(*func);
+    //     return func;
+    // }
+
+    Value *retval = block->llvm_codegen(compiler);
+
+    if(retval){
+        // compiler->builder.CreateRet(retval);
+        verifyFunction(*func);
+        return func;
+    }
+
+    // Error reading body, remove function.
+    func->eraseFromParent();
+
+    std::cerr<<"Function couldn't be made, function body has errors"<<std::endl;
+    exit(1);
     return nullptr;
 }
+
 
 Value *NodeFunctionCall::llvm_codegen(LLVMCompiler *compiler) {
-    // Function *func = compiler->module->getFunction(identifier);
-    // if (!func) {
-    //     std::cerr << "Unknown function referenced: " << identifier << std::endl;
-    //     exit(1);
-    // }
+    // Look up the function in the module
+    Function *func = compiler->module.getFunction(identifier);
+    if (!func) {
+        std::cerr << "Error: function not found: " << identifier << std::endl;
+        return nullptr;
+    }
 
-    // if (func->arg_size() != arguments.size()) {
-    //     std::cerr << "Incorrect number of arguments passed to function: " << identifier << std::endl;
-    //     exit(1);
-    // }
+    // Check that the number of arguments matches the function signature
+    if (func->arg_size() != ((NodeArgList*)arg_node)->arg_list.size()) {
+        std::cerr << "Error: incorrect number of arguments to function call: " << identifier << std::endl;
+        return nullptr;
+    }
 
-    // std::vector<Value *> args;
-    // for (auto &arg : arguments) {
-    //     args.push_back(arg->llvm_codegen(compiler));
-    // }
+    // Generate code for each argument
+    std::vector<Value *> args;
+    for (auto &arg : ((NodeArgList*)arg_node)->arg_list) {
+        Value *arg_val = arg->llvm_codegen(compiler);
+        args.push_back(arg_val);
+        if (!args.back()) {
+            std::cerr << "Error: failed to generate code for argument to function call: " << identifier << std::endl;
+            // return nullptr;
+        }
+    }
 
-    // return compiler->builder.CreateCall(func, args, "calltmp");
-    return nullptr;
+    // Call the function
+    return compiler->builder.CreateCall(func, args);
 }
 
 
-
-
-
-#undef MAIN_FUNC
+Value *NodeReturn::llvm_codegen(LLVMCompiler *compiler) {
+    Value *retval = expression->llvm_codegen(compiler);
+    compiler->builder.CreateRet(retval);
+    return retval;
+}

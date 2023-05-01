@@ -12,7 +12,7 @@ Base node class. Defined as `abstract`.
 */
 struct Node {
     enum NodeType {
-        BIN_OP, TYPE_LIT, STMTS, ASSN, DBG, IDENT, TERN, IFELSE, ARG, PARAM, FUNC_DECL, FUNC_CALL, ARGLIST, PARAMLIST
+        BIN_OP, TYPE_LIT, STMTS, ASSN, DBG, IDENT, TERN, IFELSE, ARG, PARAM, FUNC_DECL, FUNC_CALL, ARGLIST, PARAMLIST, RETURN
     } type;
 
     virtual std::string to_string() = 0;
@@ -168,20 +168,10 @@ struct NodeParameterList: public Node {
 struct NodeFunctionDecl : public Node {
     std::string identifier;
     std::string datatype;
-    Node *param_list;
+    Node *param_node;
     Node *block;
 
-    NodeFunctionDecl(std::string identifier, std::string datatype, Node* arg_list, Node *block);
-    std::string to_string();
-    llvm::Value *llvm_codegen(LLVMCompiler *compiler);
-};
-
-
-struct NodeArg : public Node {
-    std::string identifier;
-    std::string datatype;
-
-    NodeArg(std::string identifier, std::string datatype);
+    NodeFunctionDecl(std::string identifier, std::string datatype, Node* param_list, Node *block);
     std::string to_string();
     llvm::Value *llvm_codegen(LLVMCompiler *compiler);
 };
@@ -197,9 +187,17 @@ struct NodeArgList : public Node {
 
 struct NodeFunctionCall : public Node {
     std::string identifier;
-    Node *arg_list;
+    Node *arg_node;
 
     NodeFunctionCall(std::string identifier, Node* arg_list);
+    std::string to_string();
+    llvm::Value *llvm_codegen(LLVMCompiler *compiler);
+};
+
+struct NodeReturn : public Node {
+    Node *expression;
+
+    NodeReturn(Node *expr);
     std::string to_string();
     llvm::Value *llvm_codegen(LLVMCompiler *compiler);
 };

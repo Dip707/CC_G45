@@ -186,6 +186,10 @@ string getvalue(string m_key) {
 "short"   { yylval.lexeme = string(yytext); return TTYPE; }
 "long"    { yylval.lexeme = string(yytext); return TTYPE; }
 
+"fun"    { return TFUN; }
+"ret"    { return TRETURN; }
+","      { return TCOMMA; }
+
 "if"      { return TIF; }
 "else"    { return TELSE; }
 
@@ -228,9 +232,6 @@ string getvalue(string m_key) {
 <MULTILINE_COMMENT>\n             { /* eat up newlines */}
 <MULTILINE_COMMENT>"*"+"/"        BEGIN(INITIAL);
 
-"fun"    { return TFUN; }
-"ret"    { return TRETURN; }
-","      { return TCOMMA; }
 
 .         { yyerror("unknown char"); }
 %%

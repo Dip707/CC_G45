@@ -222,12 +222,13 @@ int main(int argc, char *argv[]) {
 	if(final_values) {
 
 		// here
+        string myStr = final_values->to_string();
+        FILE* file = fopen ("opt.txt", "w");
+        fwrite(myStr.data(), sizeof(char), myStr.size(), file);
+        fclose(file);
 
 		if (arg_option == ARG_OPTION_P) {
-			string myStr = final_values->to_string();
-			FILE* file = fopen ("opt.txt", "w");
-			fwrite(myStr.data(), sizeof(char), myStr.size(), file);
-			fclose(file);
+            cout<<final_values->to_string()<<endl;
 			return 0;
 		}
 		

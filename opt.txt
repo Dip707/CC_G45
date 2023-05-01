@@ -1,1 +1,1 @@
-(begin (let (a long) 1000) (dbg a) (begin (dbg a)))
+(begin (func add int (Params (param a int) (param b int)) (begin (return (+ a b)))) (func main int (Params) (begin (let (a int) 1) (let (b int) 2) (let (c int) (call add (Args a b))) (dbg a) (dbg b) (dbg c) (return 0))))
