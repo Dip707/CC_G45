@@ -1,1 +1,4 @@
-(begin (func add int (Params (param a int) (param b int)) (begin (return (+ a b)))) (func main int (Params) (begin (let (a int) 1) (let (b int) 2) (let (c int) (call add (Args a b))) (dbg a) (dbg b) (dbg c) (return 0))))
+(begin (func not int (Params (param a int)) (begin ( if-else a
+(begin (return 0))
+(begin (return 1))
+))) (func main int (Params) (begin (dbg (call not (Args 0))))))

@@ -273,28 +273,28 @@ Value *NodeDecl::llvm_codegen(LLVMCompiler *compiler) {
             }
         } else if (expr_type->isIntegerTy(64) && target_type->isIntegerTy(32)) {
             if (ConstantInt *CI = dyn_cast<ConstantInt>(expr)) {
-                int32_t val = CI->getSExtValue();
+                int64_t val = CI->getSExtValue();
                 if (val >= INT32_MIN && val <= INT32_MAX) {
                     expr = compiler->builder.CreateTrunc(expr, compiler->builder.getInt32Ty(), "LONG_to_INT");
                 } else {
-                    std::cerr << "Type mismatch: the int value " << val << " is out of range for a short variable" << std::endl;
+                    std::cerr << "Type mismatch: the long value " << val << " is out of range for a int variable" << std::endl;
                     exit(1);
                 }
             } else {
-                std::cerr << "Type mismatch: cannot assign a value of type int to a variable of type short without explicit cast" << std::endl;
+                std::cerr << "Type mismatch: cannot assign a value of type long to a variable of type int without explicit cast" << std::endl;
                 exit(1);
             }
         } else if (expr_type->isIntegerTy(64) && target_type->isIntegerTy(16)) {
             if (ConstantInt *CI = dyn_cast<ConstantInt>(expr)) {
-                int32_t val = CI->getSExtValue();
+                int64_t val = CI->getSExtValue();
                 if (val >= INT16_MIN && val <= INT16_MAX) {
-                    expr = compiler->builder.CreateTrunc(expr, compiler->builder.getInt16Ty(), "long_to_short");
+                    expr = compiler->builder.CreateTrunc(expr, compiler->builder.getInt64Ty(), "long_to_short");
                 } else {
-                    std::cerr << "Type mismatch: the int value " << val << " is out of range for a short variable" << std::endl;
+                    std::cerr << "Type mismatch: the long value " << val << " is out of range for a short variable" << std::endl;
                     exit(1);
                 }
             } else {
-                std::cerr << "Type mismatch: cannot assign a value of type int to a variable of type short without explicit cast" << std::endl;
+                std::cerr << "Type mismatch: cannot assign a value of type long to a variable of type short without explicit cast" << std::endl;
                 exit(1);
             }
         } else {
@@ -385,12 +385,15 @@ Value *NodeIfElse::llvm_codegen(LLVMCompiler *compiler) {
     BasicBlock *else_bb = BasicBlock::Create(*compiler->context, "else");
     BasicBlock *merge_bb = BasicBlock::Create(*compiler->context, "ifcont");
 
+    //parent block
+
     compiler->builder.CreateCondBr(cond, then_bb, else_bb);
 
     compiler->builder.SetInsertPoint(then_bb);
-
     if_block->llvm_codegen(compiler);
+
     compiler->builder.CreateBr(merge_bb);
+
     then_bb = compiler->builder.GetInsertBlock();
 
     func->getBasicBlockList().push_back(else_bb);
@@ -456,10 +459,8 @@ Value *NodeFunctionDecl::llvm_codegen(LLVMCompiler *compiler) {
         compiler->module
     );
 
-    std::cerr<<"here1"<<std::endl;
     BasicBlock *entry = BasicBlock::Create(*compiler->context, "entry", func);
     compiler->builder.SetInsertPoint(entry);
-    std::cerr<<"here2"<<std::endl;
 
     // Set up function arguments in the symbol table
     unsigned idx = 0;
@@ -473,7 +474,7 @@ Value *NodeFunctionDecl::llvm_codegen(LLVMCompiler *compiler) {
 
     // if (Value *retval = block->llvm_codegen(compiler)) {
     //     // Instead of directly creating the return instruction, branch to the return block
-    //     compiler->builder.CreateBr(returnBlock);
+    // compiler->builder.CreateBr(returnBlock);
 
     //     // Set the insert point to the return block and create the return instruction with the return value
     //     compiler->builder.SetInsertPoint(returnBlock);
@@ -482,20 +483,56 @@ Value *NodeFunctionDecl::llvm_codegen(LLVMCompiler *compiler) {
     //     return func;
     // }
 
-    Value *retval = block->llvm_codegen(compiler);
+    block->llvm_codegen(compiler);
 
-    if(retval){
-        // compiler->builder.CreateRet(retval);
-        verifyFunction(*func);
-        return func;
+    if(!compiler->builder.GetInsertBlock()->getTerminator()){
+        // Create a default return value of 0 based on the return type
+        if (return_type->isIntegerTy(16)) {
+            compiler->builder.CreateRet(compiler->builder.getInt16(0));
+        } else if (return_type->isIntegerTy(32)) {
+            compiler->builder.CreateRet(compiler->builder.getInt32(0));
+        } else if (return_type->isIntegerTy(64)) {
+            compiler->builder.CreateRet(compiler->builder.getInt64(0));
+        } else {
+            // Assuming a default return value for unsupported types
+            compiler->builder.CreateRet(compiler->builder.getInt32(0));
+        }
     }
 
-    // Error reading body, remove function.
-    func->eraseFromParent();
+    verifyFunction(*func);
+    return func;
 
-    std::cerr<<"Function couldn't be made, function body has errors"<<std::endl;
-    exit(1);
-    return nullptr;
+    // // Error reading body, remove function.
+    // func->eraseFromParent();
+
+    // std::cerr<<"Function couldn't be made, function body has errors"<<std::endl;
+    // exit(1);
+    // return nullptr;
+}
+
+
+Value *NodeReturn::llvm_codegen(LLVMCompiler *compiler) {
+    Function *func = compiler->builder.GetInsertBlock()->getParent();
+
+    Type *return_type = func->getReturnType();
+
+    BasicBlock *return_block = BasicBlock::Create(*compiler->context, "return", func);
+
+    compiler->builder.CreateBr(return_block);
+    compiler->builder.SetInsertPoint(return_block);
+
+
+    Value *retval = expression->llvm_codegen(compiler);
+    if (!retval) {
+        std::cerr << "Error: return expression has no value" << std::endl;
+        return nullptr;
+    }
+    // Instead of directly creating the return instruction, branch to the return block
+
+    compiler->builder.CreateRet(retval);
+
+    
+    return retval;
 }
 
 
@@ -515,22 +552,50 @@ Value *NodeFunctionCall::llvm_codegen(LLVMCompiler *compiler) {
 
     // Generate code for each argument
     std::vector<Value *> args;
+    unsigned idx = 0;
     for (auto &arg : ((NodeArgList*)arg_node)->arg_list) {
         Value *arg_val = arg->llvm_codegen(compiler);
         args.push_back(arg_val);
         if (!args.back()) {
             std::cerr << "Error: failed to generate code for argument to function call: " << identifier << std::endl;
-            // return nullptr;
+            return nullptr;
         }
+
+        // Perform type checking
+        Type *formal_param_type = func->getFunctionType()->getParamType(idx);
+        Type *actual_arg_type = arg_val->getType();
+
+        if (actual_arg_type != formal_param_type) {
+            if (actual_arg_type->isIntegerTy() && formal_param_type->isIntegerTy()) {
+                unsigned actual_arg_bitwidth = actual_arg_type->getIntegerBitWidth();
+                unsigned formal_param_bitwidth = formal_param_type->getIntegerBitWidth();
+
+                if (actual_arg_bitwidth > formal_param_bitwidth) {
+                    std::cerr << "Error: argument type mismatch in function call: " << identifier
+                              << ". The actual argument type is larger than the formal parameter type."
+                              << std::endl;
+                    return nullptr;
+                } else {
+                    // If actual argument type is smaller, perform an integer type promotion
+                    Value *promoted_arg = compiler->builder.CreateSExt(arg_val, formal_param_type);
+                    args.back() = promoted_arg;
+                }
+            } else {
+                std::string formal;
+                std::string actual;
+                llvm::raw_string_ostream rso1(formal);
+                llvm::raw_string_ostream rso2(actual);
+                formal_param_type->print(rso1);
+                actual_arg_type->print(rso2);
+                std::cerr << "Error: argument type mismatch in function call: " << identifier
+                          << ". Expected " << rso1.str() << " but got " << rso2.str() << std::endl;
+                return nullptr;
+            }
+        }
+
+        idx++;
     }
 
     // Call the function
     return compiler->builder.CreateCall(func, args);
-}
-
-
-Value *NodeReturn::llvm_codegen(LLVMCompiler *compiler) {
-    Value *retval = expression->llvm_codegen(compiler);
-    compiler->builder.CreateRet(retval);
-    return retval;
 }

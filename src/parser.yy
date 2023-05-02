@@ -49,9 +49,7 @@ int yyerror(std::string msg);
 
 %%
 
-Program : 
-        { final_values = nullptr; }
-        | StmtList
+Program : StmtList
         { final_values = $1; }
 	    ;
 
@@ -89,7 +87,7 @@ Stmt : TLET TIDENT TCOLON TTYPE TEQUAL Expr TSCOL
      { $$ = $1;}
      | FunctionDecl
      { $$ = $1;}
-     | TRETURN Expr TSCOL
+     | TRETURN Expr TSCOL 
      { $$ = new NodeReturn($2); }
      ;
 
@@ -148,18 +146,14 @@ ScopeClose: TBCLOSE
 IfElseStmt : TIF Expr ScopeOpen StmtList ScopeClose TELSE ScopeOpen StmtList ScopeClose
     {
         NodeIfElse *tmp = new NodeIfElse($2, $4, $8);
-        if($2->type == Node::NodeType::TYPE_LIT)
-        {
-            if($2->to_string() == "0")
-            {
+        if($2->type == Node::NodeType::TYPE_LIT){
+            if($2->to_string() == "0" || stoi($2->to_string()) == 0){
                 $$ = tmp->else_block;
             }
-            else
-            {
+            else{
                 $$ = tmp->if_block;
             }
-        }
-        else
+        }else
             $$ = tmp;
     }
     ;
@@ -175,8 +169,9 @@ Expr : TINT_LIT
      }
      | TIDENT
      { 
+        // symbol_table->print();
         if(symbol_table->contains($1))
-            $$ = new NodeIdent($1, symbol_table->get_type($1)); 
+            $$ = new NodeIdent($1, symbol_table->get_type($1));
         else
             yyerror("using undeclared variable.\n");
      }
