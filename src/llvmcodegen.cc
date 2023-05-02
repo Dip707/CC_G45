@@ -120,6 +120,9 @@ Value *NodeStmts::llvm_codegen(LLVMCompiler *compiler) {
     Value *last = nullptr;
     for(auto node : list) {
         last = node->llvm_codegen(compiler);
+        if(node->type == RETURN) {
+            break;
+        }
     }
     return last;
 }
@@ -391,8 +394,9 @@ Value *NodeIfElse::llvm_codegen(LLVMCompiler *compiler) {
 
     compiler->builder.SetInsertPoint(then_bb);
     if_block->llvm_codegen(compiler);
-
+    if(!compiler->builder.GetInsertBlock()->getTerminator()) {
     compiler->builder.CreateBr(merge_bb);
+    }
 
     then_bb = compiler->builder.GetInsertBlock();
 
@@ -401,7 +405,9 @@ Value *NodeIfElse::llvm_codegen(LLVMCompiler *compiler) {
 
     else_block->llvm_codegen(compiler);
 
+    if(!compiler->builder.GetInsertBlock()->getTerminator()) {
     compiler->builder.CreateBr(merge_bb);
+    }
     else_bb = compiler->builder.GetInsertBlock();
 
     func->getBasicBlockList().push_back(merge_bb);
@@ -516,13 +522,67 @@ Value *NodeReturn::llvm_codegen(LLVMCompiler *compiler) {
 
     Type *return_type = func->getReturnType();
 
-    BasicBlock *return_block = BasicBlock::Create(*compiler->context, "return", func);
+    BasicBlock *return_block = BasicBlock::Create(*compiler->context, "entry", func);
 
     compiler->builder.CreateBr(return_block);
     compiler->builder.SetInsertPoint(return_block);
 
 
     Value *retval = expression->llvm_codegen(compiler);
+    Type *retval_type = retval->getType();
+
+    if (retval_type != return_type) {
+        if (retval_type->isIntegerTy(16) && return_type->isIntegerTy(32)) {
+            retval = compiler->builder.CreateSExt(retval, compiler->builder.getInt32Ty(), "short_to_int");
+        } else if (retval_type->isIntegerTy(16) && return_type->isIntegerTy(64)) {
+            retval = compiler->builder.CreateSExt(retval, compiler->builder.getInt64Ty(), "short_to_long");
+        } else if (retval_type->isIntegerTy(32) && return_type->isIntegerTy(64)) {
+            retval = compiler->builder.CreateSExt(retval, compiler->builder.getInt64Ty(), "int_to_long");
+        } else if (retval_type->isIntegerTy(32) && return_type->isIntegerTy(16)) {
+            if (ConstantInt *CI = dyn_cast<ConstantInt>(retval)) {
+                int32_t val = CI->getSExtValue();
+                if (val >= INT16_MIN && val <= INT16_MAX) {
+                    retval = compiler->builder.CreateTrunc(retval, compiler->builder.getInt16Ty(), "int_to_short");
+                } else {
+                    std::cerr << "Type mismatch: the int value " << val << " is out of range for a short variable" << std::endl;
+                    exit(1);
+                }
+            } else {
+                std::cerr << "Type mismatch: cannot assign a value of type int to a variable of type short without explicit cast" << std::endl;
+                exit(1);
+            }
+        } else if (retval_type->isIntegerTy(64) && return_type->isIntegerTy(32)) {
+            if (ConstantInt *CI = dyn_cast<ConstantInt>(retval)) {
+                int64_t val = CI->getSExtValue();
+                if (val >= INT32_MIN && val <= INT32_MAX) {
+                    retval = compiler->builder.CreateTrunc(retval, compiler->builder.getInt32Ty(), "LONG_to_INT");
+                } else {
+                    std::cerr << "Type mismatch: the long value " << val << " is out of range for a int variable" << std::endl;
+                    exit(1);
+                }
+            } else {
+                std::cerr << "Type mismatch: cannot assign a value of type long to a variable of type int without explicit cast" << std::endl;
+                exit(1);
+            }
+        } else if (retval_type->isIntegerTy(64) && return_type->isIntegerTy(16)) {
+            if (ConstantInt *CI = dyn_cast<ConstantInt>(retval)) {
+                int64_t val = CI->getSExtValue();
+                if (val >= INT16_MIN && val <= INT16_MAX) {
+                    retval = compiler->builder.CreateTrunc(retval, compiler->builder.getInt64Ty(), "long_to_short");
+                } else {
+                    std::cerr << "Type mismatch: the long value " << val << " is out of range for a short variable" << std::endl;
+                    exit(1);
+                }
+            } else {
+                std::cerr << "Type mismatch: cannot assign a value of type long to a variable of type short without explicit cast" << std::endl;
+                exit(1);
+            }
+        } else {
+            std::cerr << "Type mismatch: cannot assign a value of type " << return_type << " to a variable of type " << retval_type->getTypeID() << std::endl;
+            exit(1);
+        }
+    }
+
     if (!retval) {
         std::cerr << "Error: return expression has no value" << std::endl;
         return nullptr;
